@@ -685,7 +685,7 @@ def generate_codebase():
         }}
         """
         
-        # Build exact usage code based on model type
+        # Build exact usage code and prompt based on model type
         if store.get('data_type') == 'csv':
             usage_code = f"""
         EXACT CODE TO LOAD AND USE THIS MODEL:
@@ -719,7 +719,59 @@ def generate_codebase():
             probabilities = model.predict_proba(df_input)[0]
         ```
         """
-        else:  # image model
+            # Tabular (CSV) model: Vercel deployment prompt
+            generation_prompt = f"""
+        {user_prompt}
+        
+        Model Context:
+        {model_context}
+        
+        {model_file_structure}
+        
+        {usage_code}
+        
+        IMPORTANT REQUIREMENTS:
+        1. Generate a complete, working codebase STRUCTURED FOR VERCEL DEPLOYMENT
+        2. The model MUST be loaded from 'trained_model.pkl' using the EXACT code pattern shown above
+        3. VERCEL STRUCTURE: The main Flask app MUST be in 'api/index.py' with the app instance named 'app'
+        4. Include all necessary files (Python files in api/, HTML templates in api/templates/, requirements.txt in root)
+        5. Make sure the code handles the specific data type ({store.get('data_type')}) and mode ({store.get('mode')})
+        6. USE THE EXACT LOADING AND PREDICTION CODE PROVIDED ABOVE - do not deviate from it
+        7. The requirements.txt must include: flask, pandas, numpy, scikit-learn
+        8. The trained_model.pkl file will be in the ROOT directory, so load it with: open('trained_model.pkl', 'rb')
+        9. For templates, use: app = Flask(__name__, template_folder='templates') and put HTML files in api/templates/
+        
+        VERCEL FILE STRUCTURE:
+        - api/index.py (main Flask app with 'app' variable)
+        - api/templates/*.html (HTML templates)
+        - requirements.txt (in root)
+        - trained_model.pkl (in root - already provided)
+        
+        OUTPUT FORMAT:
+        Return the files in this exact format, with each file separated by "---FILE---":
+        
+        ---FILE---
+        FILENAME: api/index.py
+        CONTENT:
+        <Flask app code here>
+        ---FILE---
+        FILENAME: api/templates/index.html
+        CONTENT:
+        <HTML content here>
+        ---FILE---
+        FILENAME: requirements.txt
+        CONTENT:
+        <dependencies here>
+        
+        Start with api/index.py and include ALL necessary files.
+        """
+            system_instruction = """You are an expert Python developer specializing in Vercel deployments. Generate clean, production-ready code.
+        Always include proper error handling, comments, and a requirements.txt file.
+        For web apps, create attractive, modern UIs. Follow the exact output format specified.
+        CRITICAL: Structure the app for Vercel serverless deployment with Flask in api/index.py.
+        CRITICAL: In requirements.txt, NEVER use strict version pins (==). Use >= for minimum versions only."""
+        else:
+            # Image model: Local-only prompt, no Vercel, just repo for local use
             usage_code = f"""
         EXACT CODE TO LOAD AND USE THIS MODEL:
         ```python
@@ -753,9 +805,7 @@ def generate_codebase():
             return prediction  # Returns one of: {store.get('classes', [])}
         ```
         """
-        
-        # Generate codebase with Gemini
-        generation_prompt = f"""
+            generation_prompt = f"""
         {user_prompt}
         
         Model Context:
@@ -766,47 +816,53 @@ def generate_codebase():
         {usage_code}
         
         IMPORTANT REQUIREMENTS:
-        1. Generate a complete, working codebase STRUCTURED FOR VERCEL DEPLOYMENT
+        1. Generate a complete, working codebase for LOCAL USE ONLY (do NOT structure for Vercel or serverless deployment)
         2. The model MUST be loaded from 'trained_model.pkl' using the EXACT code pattern shown above
-        3. VERCEL STRUCTURE: The main Flask app MUST be in 'api/index.py' with the app instance named 'app'
-        4. Include all necessary files (Python files in api/, HTML templates in api/templates/, requirements.txt in root)
+        3. The main Flask app should be in 'app.py' with the app instance named 'app'
+        4. Include all necessary files (Python files, HTML templates, requirements.txt in root)
         5. Make sure the code handles the specific data type ({store.get('data_type')}) and mode ({store.get('mode')})
         6. USE THE EXACT LOADING AND PREDICTION CODE PROVIDED ABOVE - do not deviate from it
-        7. The requirements.txt must include: flask, pandas, numpy, scikit-learn{', tensorflow-cpu>=2.15 (NOT tensorflow, use tensorflow-cpu). DO NOT use strict version pins like ==, use >= instead' if store.get('data_type') == 'image' else ''}
+        7. The requirements.txt must include: flask, pandas, numpy, scikit-learn, tensorflow-cpu>=2.15 (NOT tensorflow, use tensorflow-cpu). DO NOT use strict version pins like ==, use >= instead
         8. The trained_model.pkl file will be in the ROOT directory, so load it with: open('trained_model.pkl', 'rb')
-        9. For templates, use: app = Flask(__name__, template_folder='templates') and put HTML files in api/templates/
+        9. For templates, use: app = Flask(__name__, template_folder='templates') and put HTML files in templates/
+        10. Add a README with clear instructions: "This project is for local use only. To run the demo, clone the repository and run 'python app.py' locally. Image models cannot be deployed on Vercel."
         
-        VERCEL FILE STRUCTURE:
-        - api/index.py (main Flask app with 'app' variable)
-        - api/templates/*.html (HTML templates)
+        LOCAL FILE STRUCTURE:
+        - app.py (main Flask app with 'app' variable)
+        - templates/*.html (HTML templates)
         - requirements.txt (in root)
         - trained_model.pkl (in root - already provided)
+        - README.md (with local usage instructions)
         
         OUTPUT FORMAT:
         Return the files in this exact format, with each file separated by "---FILE---":
         
         ---FILE---
-        FILENAME: api/index.py
+        FILENAME: app.py
         CONTENT:
         <Flask app code here>
         ---FILE---
-        FILENAME: api/templates/index.html
+        FILENAME: templates/index.html
         CONTENT:
         <HTML content here>
         ---FILE---
         FILENAME: requirements.txt
         CONTENT:
         <dependencies here>
+        ---FILE---
+        FILENAME: README.md
+        CONTENT:
+        <local usage instructions here>
         
-        Start with api/index.py and include ALL necessary files.
+        Start with app.py and include ALL necessary files.
         """
-        
-        system_instruction = """You are an expert Python developer specializing in Vercel deployments. Generate clean, production-ready code.
+            system_instruction = """You are an expert Python developer. Generate clean, production-ready code for LOCAL USE ONLY (not for Vercel/serverless deployment).
         Always include proper error handling, comments, and a requirements.txt file.
         For web apps, create attractive, modern UIs. Follow the exact output format specified.
-        CRITICAL: Structure the app for Vercel serverless deployment with Flask in api/index.py.
+        CRITICAL: Structure the app for local Flask usage in app.py.
         CRITICAL: In requirements.txt, NEVER use strict version pins (==). Use >= for minimum versions only.
-        CRITICAL: For image/tensorflow projects, use 'tensorflow-cpu>=2.15' NOT 'tensorflow'."""
+        CRITICAL: For image/tensorflow projects, use 'tensorflow-cpu>=2.15' NOT 'tensorflow'.
+        CRITICAL: Add a README with clear instructions for local use only."""
         
         generated_code = call_gemini(generation_prompt, system_instruction)
         

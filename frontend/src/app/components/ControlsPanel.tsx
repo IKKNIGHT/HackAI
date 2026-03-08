@@ -560,12 +560,23 @@ export function ControlsPanel({
 
                 {/* Image Preview */}
                 {imagePreview && (
-                  <div className="mt-2 w-full h-24 rounded-lg bg-white/5 border border-white/10 overflow-hidden">
+                  <div className="relative mt-2 w-full h-24 rounded-lg bg-white/5 border border-white/10 overflow-hidden">
                     <img
                       src={imagePreview}
                       alt="Preview"
                       className="w-full h-full object-contain"
                     />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImagePreview(null);
+                        setImageFile(null);
+                      }}
+                      className="absolute top-1 right-1 p-1 rounded-full bg-black/40 hover:bg-black/70 text-white z-10"
+                      aria-label="Remove preview"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
                 )}
 
@@ -657,12 +668,20 @@ export function ControlsPanel({
         {/* Prediction Results */}
         {predictionResult && (
           <div
-            className={`mt-3 p-3 rounded-lg border ${
+            className={`relative mt-3 p-3 rounded-lg border ${
               isCSVMode
                 ? "bg-gradient-to-br from-[#39FF14]/10 to-[#39FF14]/5 border-[#39FF14]/30"
                 : "bg-gradient-to-br from-[#00F0FF]/10 to-[#00F0FF]/5 border-[#00F0FF]/30"
             }`}
           >
+            <button
+              type="button"
+              onClick={() => setPredictionResult(null)}
+              className="absolute top-2 right-2 p-1 rounded-full bg-black/40 hover:bg-black/70 text-white z-10"
+              aria-label="Hide prediction results"
+            >
+              <X className="w-4 h-4" />
+            </button>
             <div className="flex items-start justify-between mb-2">
               <div>
                 <h4 className="text-sm font-semibold text-white">
