@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Check,
   AlertCircle,
@@ -8,6 +8,9 @@ import {
   ImageIcon,
   Download,
   FlaskConical,
+  ChevronDown,
+  Camera,
+  X,
 } from "lucide-react";
 import { ModelState } from "../App";
 import { predictCSV, predictImage, startGitHubAuth } from "../services/api";
@@ -58,6 +61,8 @@ export function ControlsPanel({
   const [isExporting, setIsExporting] = useState(false);
   const [isDemoing, setIsDemoing] = useState(false);
   const [showDemoPopup, setShowDemoPopup] = useState(false);
+  // Only allow collapse in CSV mode
+  const [testPredictionExpanded, setTestPredictionExpanded] = useState(true);
   const [demoPrompt, setDemoPrompt] = useState("");
 
   // CSV form state - dynamic based on features
@@ -67,6 +72,12 @@ export function ControlsPanel({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Webcam state
+  const [showWebcam, setShowWebcam] = useState(false);
+  const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Reset form when features change
   useEffect(() => {
@@ -101,6 +112,74 @@ export function ControlsPanel({
     reader.readAsDataURL(file);
   };
 
+  // Webcam functions
+  const startWebcam = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment", width: 640, height: 480 },
+      });
+      setWebcamStream(stream);
+      setShowWebcam(true);
+    } catch (err) {
+      setPredictionError("Could not access webcam. Please check permissions.");
+    }
+  }, []);
+
+  const stopWebcam = useCallback(() => {
+    if (webcamStream) {
+      webcamStream.getTracks().forEach((track) => track.stop());
+      setWebcamStream(null);
+    }
+    setShowWebcam(false);
+  }, [webcamStream]);
+
+  const capturePhoto = useCallback(() => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0);
+
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) return;
+
+        const file = new File([blob], "webcam-capture.jpg", {
+          type: "image/jpeg",
+        });
+        setImageFile(file);
+        setImagePreview(canvas.toDataURL("image/jpeg"));
+        setPredictionResult(null);
+        setPredictionError(null);
+        stopWebcam();
+      },
+      "image/jpeg",
+      0.9,
+    );
+  }, [stopWebcam]);
+
+  // Cleanup webcam on unmount
+  useEffect(() => {
+    return () => {
+      if (webcamStream) {
+        webcamStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [webcamStream]);
+
+  // Connect stream to video element when both are available
+  useEffect(() => {
+    if (videoRef.current && webcamStream) {
+      videoRef.current.srcObject = webcamStream;
+    }
+  }, [webcamStream, showWebcam]);
+
   const handlePredictCSV = async () => {
     if (!isTrained || dataType !== "csv") {
       setPredictionError("Please train a CSV model first");
@@ -126,6 +205,8 @@ export function ControlsPanel({
           ? Math.max(...result.probabilities) * 100
           : undefined,
       });
+      setTestPredictionExpanded(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       setPredictionError(
         err instanceof Error ? err.message : "Prediction failed",
@@ -154,6 +235,7 @@ export function ControlsPanel({
       setPredictionResult({
         prediction: result.prediction,
       });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       setPredictionError(
         err instanceof Error ? err.message : "Prediction failed",
@@ -163,7 +245,7 @@ export function ControlsPanel({
     }
   };
 
-  const isCSVMode = trainingMode === "tabular";
+  let isCSVMode = trainingMode === "tabular";
   const canPredict =
     isTrained && (isCSVMode ? dataType === "csv" : dataType === "image");
 
@@ -224,6 +306,12 @@ export function ControlsPanel({
   const accuracy = metrics?.accuracy ?? metrics?.r2_score ?? 0;
   const accuracyPercent = Math.round(accuracy * 100);
   const isRegression = mode === "Regression";
+
+  // In image mode, always expanded
+  isCSVMode = trainingMode === "tabular";
+  useEffect(() => {
+    if (!isCSVMode) setTestPredictionExpanded(true);
+  }, [isCSVMode]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -316,19 +404,31 @@ export function ControlsPanel({
       )}
 
       {/* Test Prediction */}
-      <div className="p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
-        <h3 className="text-xs font-semibold text-gray-400 mb-3 uppercase">
-          Test Prediction
-        </h3>
+      <div className="p-4 rounded-xl z-30 bg-white/5 backdrop-blur-sm border border-white/10 overflow-visible">
+        {isCSVMode ? (
+          <button
+            onClick={() => setTestPredictionExpanded(!testPredictionExpanded)}
+            className="w-full flex items-center justify-between text-xs font-semibold text-gray-400 mb-3 uppercase"
+          >
+            <span>Test Prediction</span>
+            <ChevronDown
+              className={`w-4 h-4 transition-transform ${testPredictionExpanded ? "rotate-180" : ""}`}
+            />
+          </button>
+        ) : (
+          <div className="w-full flex items-center justify-between text-xs font-semibold text-gray-400 mb-3 uppercase">
+            <span>Test Prediction</span>
+          </div>
+        )}
 
-        {!isTrained && (
+        {testPredictionExpanded && !isTrained && (
           <div className="flex items-center gap-2 p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 mb-3">
             <AlertCircle className="w-4 h-4 text-yellow-500" />
             <span className="text-xs text-yellow-500">Train a model first</span>
           </div>
         )}
 
-        {isTrained && !canPredict && (
+        {testPredictionExpanded && isTrained && !canPredict && (
           <div className="flex items-center gap-2 p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30 mb-3">
             <AlertCircle className="w-4 h-4 text-yellow-500" />
             <span className="text-xs text-yellow-500">
@@ -339,37 +439,41 @@ export function ControlsPanel({
 
         {isCSVMode ? (
           <>
-            {/* Dynamic Form Fields */}
-            {features.length > 0 ? (
-              <div className="space-y-3 mb-4">
-                {features.map((feature) => (
-                  <div key={feature} className="group">
-                    <label
-                      className="text-xs font-medium text-gray-400 mb-1.5 block truncate uppercase tracking-wide"
-                      title={feature}
-                    >
-                      {feature}
-                    </label>
-                    <input
-                      type="text"
-                      value={formData[feature] || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, [feature]: e.target.value })
-                      }
-                      disabled={!canPredict || isPredicting}
-                      placeholder="Enter value..."
-                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-[#39FF14]/50 focus:bg-white/10 focus:shadow-[0_0_15px_rgba(57,255,20,0.15)] disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-all duration-200 hover:border-white/20 hover:bg-white/[0.07]"
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-400 text-xs mb-3">
-                Train a model to see input fields
-              </p>
-            )}
+            {/* Dynamic Form Fields - Collapsible */}
+            {testPredictionExpanded &&
+              (features.length > 0 ? (
+                <div className="space-y-3 mb-4">
+                  {features.map((feature) => (
+                    <div key={feature} className="group">
+                      <label
+                        className="text-xs font-medium text-gray-400 mb-1.5 block truncate uppercase tracking-wide"
+                        title={feature}
+                      >
+                        {feature}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData[feature] || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            [feature]: e.target.value,
+                          })
+                        }
+                        disabled={!canPredict || isPredicting}
+                        placeholder="Enter value..."
+                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-[#39FF14]/50 focus:bg-white/10 focus:shadow-[0_0_15px_rgba(57,255,20,0.15)] disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-all duration-200 hover:border-white/20 hover:bg-white/[0.07]"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-400 text-xs mb-3">
+                  Train a model to see input fields
+                </p>
+              ))}
 
-            {/* Predict Button */}
+            {/* Predict Button - Always visible */}
             <button
               onClick={handlePredictCSV}
               disabled={!canPredict || isPredicting}
@@ -387,50 +491,100 @@ export function ControlsPanel({
           </>
         ) : (
           <>
-            {/* Image Upload */}
-            <div className="mb-3">
-              <input
-                type="file"
-                ref={imageInputRef}
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-              <button
-                onClick={() => imageInputRef.current?.click()}
-                disabled={!canPredict || isPredicting}
-                className="w-full px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-white font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 text-sm"
-              >
-                <Upload className="w-4 h-4" />
-                Choose Image
-              </button>
+            {/* Webcam Modal */}
+            {showWebcam && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                <div className="relative w-[500px] p-4 rounded-xl bg-[#1a1a2e] border border-white/20 shadow-2xl">
+                  <button
+                    onClick={stopWebcam}
+                    className="absolute top-3 right-3 p-1 rounded-lg hover:bg-white/10 transition-colors z-10"
+                  >
+                    <X className="w-5 h-5 text-gray-400" />
+                  </button>
 
-              {/* Image Preview */}
-              {imagePreview && (
-                <div className="mt-2 w-full h-24 rounded-lg bg-white/5 border border-white/10 overflow-hidden">
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="w-full h-full object-contain"
-                  />
+                  <h3 className="text-lg font-bold text-white mb-3">
+                    Take a Photo
+                  </h3>
+
+                  <div className="relative rounded-lg overflow-hidden bg-black mb-3">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-auto"
+                    />
+                  </div>
+
+                  <canvas ref={canvasRef} className="hidden" />
+
+                  <button
+                    onClick={capturePhoto}
+                    className="w-full px-4 py-3 rounded-lg bg-[#00F0FF] hover:bg-[#00F0FF]/90 text-black font-bold text-sm shadow-[0_0_20px_rgba(0,240,255,0.4)] transition-all flex items-center justify-center gap-2"
+                  >
+                    <Camera className="w-5 h-5" />
+                    Capture Photo
+                  </button>
                 </div>
-              )}
+              </div>
+            )}
 
-              {imageFile && (
-                <p className="text-xs text-gray-400 mt-1 truncate">
-                  {imageFile.name}
-                </p>
-              )}
-            </div>
+            {/* Image Upload - Collapsible */}
+            {testPredictionExpanded && (
+              <div className="mb-3">
+                <input
+                  type="file"
+                  ref={imageInputRef}
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={!canPredict || isPredicting}
+                    className="flex-1 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-white font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 text-sm"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Choose Image
+                  </button>
+                  <button
+                    onClick={startWebcam}
+                    disabled={!canPredict || isPredicting}
+                    className="px-3 py-2 rounded-lg bg-[#00F0FF]/20 hover:bg-[#00F0FF]/30 border border-[#00F0FF]/40 text-[#00F0FF] font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 text-sm"
+                  >
+                    <Camera className="w-4 h-4" />
+                    Webcam
+                  </button>
+                </div>
+
+                {/* Image Preview */}
+                {imagePreview && (
+                  <div className="mt-2 w-full h-24 rounded-lg bg-white/5 border border-white/10 overflow-hidden">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                )}
+
+                {imageFile && (
+                  <p className="text-xs text-gray-400 mt-1 truncate">
+                    {imageFile.name}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Available Classes */}
-            {classes.length > 0 && (
+            {testPredictionExpanded && classes.length > 0 && (
               <p className="text-xs text-gray-400 mb-3">
                 Classes: {classes.join(", ")}
               </p>
             )}
 
-            {/* Predict Button */}
+            {/* Predict Button - Always visible */}
             <button
               onClick={handlePredictImage}
               disabled={!canPredict || isPredicting || !imageFile}
@@ -524,7 +678,7 @@ export function ControlsPanel({
                 predictionResult.probabilities.length > 0 && (
                   <button className="p-1 hover:bg-white/10 rounded transition-colors group relative">
                     <Info className="w-4 h-4 text-gray-400" />
-                    <div className="absolute right-0 top-full mt-1 w-48 p-2 rounded-lg bg-black/90 border border-white/20 text-xs text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                    <div className="absolute right-0 bottom-full mb-1 w-48 p-2 rounded-lg bg-black/90 border border-white/20 text-xs text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
                       <div className="font-semibold text-white mb-1">
                         Class Probabilities:
                       </div>

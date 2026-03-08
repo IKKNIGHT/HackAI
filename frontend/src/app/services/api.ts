@@ -24,6 +24,7 @@ export interface TrainCSVResponse {
 
 export interface TrainImagesParams {
   zipFiles: File[];
+  classNames: string[];
   n_estimators: number;
   max_depth: number;
   min_samples_split: number;
@@ -101,6 +102,7 @@ export async function trainImages(params: TrainImagesParams): Promise<TrainImage
   params.zipFiles.forEach(file => {
     formData.append('zip_files', file);
   });
+  formData.append('class_names', params.classNames.join(','));
   formData.append('n_estimators', params.n_estimators.toString());
   formData.append('max_depth', params.max_depth.toString());
   formData.append('min_samples_split', params.min_samples_split.toString());

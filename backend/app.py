@@ -147,15 +147,23 @@ def train_csv():
 def train_images():
 
     zip_files = request.files.getlist('zip_files')
+    
+    # Get custom class names from form data, or fall back to filenames
+    custom_class_names = request.form.get('class_names', '').split(',')
+    custom_class_names = [name.strip() for name in custom_class_names if name.strip()]
 
     X_features = []
     y_labels = []
 
     class_names = []
 
-    for zf in zip_files:
+    for i, zf in enumerate(zip_files):
 
-        class_name = zf.filename.replace('.zip', '')
+        # Use custom class name if provided, otherwise use filename
+        if custom_class_names and i < len(custom_class_names):
+            class_name = custom_class_names[i]
+        else:
+            class_name = zf.filename.replace('.zip', '')
         class_names.append(class_name)
 
         with zipfile.ZipFile(zf, 'r') as z:
