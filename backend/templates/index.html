@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Universal Teachable Machine</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .card { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .hidden { display: none; }
+        .feature-list { max-height: 150px; overflow-y: auto; background: #fdfdfd; padding: 10px; border: 1px solid #eee; }
+    </style>
+</head>
+<body class="bg-light">
+
+<div class="container py-5">
+    <h2 class="text-center mb-4 text-primary">🧠 Universal Teachable Machine</h2>
+
+    <div class="row g-4">
+        <div class="col-md-6">
+            <div class="card p-4">
+                <h4>1. Training Input</h4>
+                <select id="inputType" class="form-select mb-3" onchange="toggleInputs()">
+                    <option value="csv">Tabular (CSV)</option>
+                    <option value="image">Visual (Image ZIPs)</option>
+                </select>
+
+                <div id="csvSection">
+                    <div class="btn-group w-100 mb-3">
+                        <input type="radio" class="btn-check" name="mode" id="cls" value="Classification" checked>
+                        <label class="btn btn-outline-primary" for="cls">Classification</label>
+                        <input type="radio" class="btn-check" name="mode" id="reg" value="Regression">
+                        <label class="btn btn-outline-primary" for="reg">Regression</label>
+                    </div>
+                    <input type="file" id="csvFile" class="form-control mb-2" accept=".csv">
+                    <div id="colSelector" class="hidden">
+                        <label class="small fw-bold text-secondary">Remove Leakage Columns:</label>
+                        <div id="colList" class="feature-list mb-2"></div>
+                        <input type="text" id="targetCol" class="form-control mb-3" placeholder="Target Column Name">
+                    </div>
+                    <button onclick="trainCSV()" class="btn btn-dark w-100">Train CSV Model</button>
+                </div>
+
+                <div id="imageSection" class="hidden">
+                    <div class="alert alert-info small">Upload one ZIP for each class (e.g., cats.zip, dogs.zip). Classification only.</div>
+                    <input type="file" id="zipFiles" class="form-control mb-3" multiple accept=".zip">
+                    <button onclick="trainImages()" class="btn btn-dark w-100">Train Image Model</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card p-4">
+                <h4>2. Test Prediction</h4>
+                <hr>
+                <div id="predictUI">
+                    <p class="text-muted">Train a model to enable testing.</p>
+                </div>
+                <div id="result" class="mt-4 display-6 text-center text-success"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleInputs() {
+    const type = document.getElementById('inputType').value;
+    document.getElementById('csvSection').classList.toggle('hidden', type !== 'csv');
+    document.getElementById('imageSection').classList.toggle('hidden', type !== 'image');
+}
+
+// CSV Leakage Detection
+document.getElementById('csvFile').addEventListener('change', function(e) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        const cols = ev.target.result.split('\n')[0].split(',');
+        const container = document.getElementById('colList');
+        container.innerHTML = '';
+        cols.forEach(c => {
+            container.innerHTML += `<div class="form-check">
+                <input class="form-check-input feat-cb" type="checkbox" value="${c.trim()}" id="cb-${c}" checked>
+                <label class="form-check-label" for="cb-${c}">${c.trim()}</label>
+            </div>`;
+        });
+        document.getElementById('colSelector').classList.remove('hidden');
+    };
+    reader.readAsText(e.target.files[0]);
+});
+
+async function trainCSV() {
+    const fd = new FormData();
+    const target = document.getElementById('targetCol').value;
+    const feats = [];
+    document.querySelectorAll('.feat-cb:checked').forEach(cb => { if(cb.value !== target) feats.push(cb.value); });
+
+    fd.append('file', document.getElementById('csvFile').files[0]);
+    fd.append('mode', document.querySelector('input[name="mode"]:checked').value);
+    fd.append('target', target);
+    fd.append('features', feats.join(','));
+
+    const res = await fetch('/train_csv', { method: 'POST', body: fd });
+    const data = await res.json();
+    if(data.status) buildCSVTest(data.features);
+}
+
+async function trainImages() {
+    const fd = new FormData();
+    const files = document.getElementById('zipFiles').files;
+    for(let f of files) { fd.append('zip_files', f); }
+
+    const res = await fetch('/train_images', { method: 'POST', body: fd });
+    const data = await res.json();
+    if(data.status) buildImageTest();
+}
+
+function buildCSVTest(features) {
+    const ui = document.getElementById('predictUI');
+    ui.innerHTML = '<h6>Input Values:</h6>';
+    features.forEach(f => {
+        ui.innerHTML += `<input type="text" class="form-control mb-2 csv-in" data-f="${f}" placeholder="${f}">`;
+    });
+    ui.innerHTML += `<button onclick="predictCSV()" class="btn btn-success w-100">Predict</button>`;
+}
+
+function buildImageTest() {
+    const ui = document.getElementById('predictUI');
+    ui.innerHTML = '<h6>Upload Image to Classify:</h6>';
+    ui.innerHTML += `<input type="file" id="testImg" class="form-control mb-3">`;
+    ui.innerHTML += `<button onclick="predictImg()" class="btn btn-success w-100">Classify Image</button>`;
+}
+
+async function predictCSV() {
+    const inputs = {};
+    document.querySelectorAll('.csv-in').forEach(i => inputs[i.dataset.f] = i.value);
+    const res = await fetch('/predict', { 
+        method: 'POST', 
+        headers: {'Content-Type': 'application/json'}, 
+        body: JSON.stringify({ inputs }) 
+    });
+    const d = await res.json();
+    document.getElementById('result').innerText = d.prediction;
+}
+
+async function predictImg() {
+    const fd = new FormData();
+    fd.append('image', document.getElementById('testImg').files[0]);
+    const res = await fetch('/predict', { method: 'POST', body: fd });
+    const d = await res.json();
+    document.getElementById('result').innerText = d.prediction;
+}
+</script>
+</body>
+</html>
