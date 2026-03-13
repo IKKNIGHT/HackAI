@@ -245,10 +245,10 @@ export default function App() {
       <div className="flex gap-2 p-6 items-stretch h-[calc(100vh-80px)]">
         {/* Training Panel */}
         <div
-          className="flex flex-col h-full"
+          className="flex flex-col h-full overflow-hidden bg-[#0A0A0F]"
           style={{ width: `${panelWidths.training}%` }}
         >
-          <div className="flex-1">
+          <div className="flex-1 overflow-hidden">
             <TrainingPanel
               mode={trainingMode}
               onModeChange={setTrainingMode}
@@ -316,10 +316,10 @@ export default function App() {
 
         {/* Controls Panel */}
         <div
-          className="flex flex-col h-full"
+          className="flex flex-col h-full overflow-hidden bg-[#0A0A0F]"
           style={{ width: `${panelWidths.controls}%` }}
         >
-          <div className="flex-1">
+          <div className="flex-1 overflow-hidden">
             <ControlsPanel
               trees={trees}
               maxDepth={maxDepth}

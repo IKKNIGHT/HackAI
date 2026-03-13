@@ -314,7 +314,7 @@ export function ControlsPanel({
   }, [isCSVMode]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 h-full overflow-y-auto overflow-x-hidden px-2 pb-4">
       {/* Demo Confirmation Popup */}
       {showDemoPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -769,10 +769,10 @@ export function ControlsPanel({
               ) : isTrained ? (
                 <>
                   <div className="text-3xl font-bold text-white">
-                    {isRegression ? accuracy.toFixed(2) : `${accuracyPercent}%`}
+                    {dataType === "image" ? "N/A" : isRegression ? accuracy.toFixed(2) : `${accuracyPercent}%`}
                   </div>
                   <div className="text-xs text-gray-400">
-                    {isRegression ? "R² Score" : "Accuracy"}
+                    {dataType === "image" ? "Image Model" : isRegression ? "R² Score" : "Accuracy"}
                   </div>
                 </>
               ) : (

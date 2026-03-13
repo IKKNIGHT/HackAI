@@ -361,8 +361,8 @@ export function RandomForestVisualization({
         </span>
       </div>
 
-      {/* Model Info Badge */}
-      {isTrained && (
+      {/* Model Parameters - Only show before training */}
+      {!isTrained && (
         <div className="mb-3 flex justify-center gap-3 text-xs">
           <div className="flex items-center gap-2 px-2 py-1 rounded bg-white/5">
             <input
@@ -372,7 +372,7 @@ export function RandomForestVisualization({
               disabled={isTraining}
               min="10"
               max="500"
-              className="w-12 bg-transparent text-gray-400 border-none outline-none focus:text-white focus:ring-1 focus:ring-[#39FF14]/50 rounded text-center"
+              className="w-12 bg-transparent text-gray-400 border-none outline-none focus:text-white focus:ring-1 focus:ring-[#39FF14]/50 rounded text-center disabled:opacity-50"
             />
             <span className="text-gray-400">Trees</span>
           </div>
@@ -384,7 +384,7 @@ export function RandomForestVisualization({
               disabled={isTraining}
               min="3"
               max="30"
-              className="w-8 bg-transparent text-gray-400 border-none outline-none focus:text-white focus:ring-1 focus:ring-[#39FF14]/50 rounded text-center"
+              className="w-8 bg-transparent text-gray-400 border-none outline-none focus:text-white focus:ring-1 focus:ring-[#39FF14]/50 rounded text-center disabled:opacity-50"
             />
             <span className="text-gray-400">Max Depth</span>
           </div>
@@ -396,7 +396,7 @@ export function RandomForestVisualization({
               disabled={isTraining}
               min="2"
               max="20"
-              className="w-8 bg-transparent text-gray-400 border-none outline-none focus:text-white focus:ring-1 focus:ring-[#39FF14]/50 rounded text-center"
+              className="w-8 bg-transparent text-gray-400 border-none outline-none focus:text-white focus:ring-1 focus:ring-[#39FF14]/50 rounded text-center disabled:opacity-50"
             />
             <span className="text-gray-400">Min Split</span>
           </div>
@@ -408,7 +408,7 @@ export function RandomForestVisualization({
               disabled={isTraining}
               min="1"
               max="10"
-              className="w-8 bg-transparent text-gray-400 border-none outline-none focus:text-white focus:ring-1 focus:ring-[#39FF14]/50 rounded text-center"
+              className="w-8 bg-transparent text-gray-400 border-none outline-none focus:text-white focus:ring-1 focus:ring-[#39FF14]/50 rounded text-center disabled:opacity-50"
             />
             <span className="text-gray-400">Min Leaf</span>
           </div>

@@ -1,4 +1,4 @@
-Create a complete high-fidelity UI design for "Universal Teachable Machine" - a dark-themed futuristic AI dashboard where users upload data and train Random Forest models. Style: dark background (#0A0A0F to #14141F), glass-morphism panels, neon green (#39FF14) accents for Random Forest, electric blue (#00F0FF) accents for MobileNet features.
+Create a complete high-fidelity UI design for "MindCraft" - a dark-themed futuristic AI dashboard where users upload data and train Random Forest models. Style: dark background (#0A0A0F to #14141F), glass-morphism panels, neon green (#39FF14) accents for Random Forest, electric blue (#00F0FF) accents for MobileNet features.
 
 LAYOUT STRUCTURE:
 Left Panel (30%): Training Input
@@ -87,7 +87,7 @@ Progress bar at 78%
 Small "Feature Importance for this prediction" popup showing which features influenced decision
 
 HEADER:
-"Universal Teachable Machine" with brain icon
+"MindCraft" with brain icon
 Status: "All in-browser • Private"
 
 COLORS:

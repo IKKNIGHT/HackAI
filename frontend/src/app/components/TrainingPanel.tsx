@@ -176,7 +176,7 @@ export function TrainingPanel({
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 h-full overflow-y-auto overflow-x-hidden px-2 pb-4">
       {/* Toggle Tabs */}
       <div className="flex gap-2 p-1 rounded-lg bg-white/5 backdrop-blur-sm border border-white/10">
         <button
