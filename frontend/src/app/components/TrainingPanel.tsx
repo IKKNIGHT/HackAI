@@ -247,7 +247,7 @@ export function TrainingPanel({
                   />
                 </button>
                 {featuresExpanded && (
-                  <div className="space-y-2">
+                  <div className="max-h-48 overflow-y-auto space-y-2 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#39FF14]/60 hover:scrollbar-thumb-[#39FF14]/80 scrollbar-thumb-rounded">
                     {columns
                       .filter((col) => col !== targetColumn)
                       .map((column) => (

@@ -7,6 +7,10 @@ interface RandomForestVisualizationProps {
   minSamplesSplit: number;
   minSamplesLeaf: number;
   modelState: ModelState;
+  onTreesChange?: (value: number) => void;
+  onMaxDepthChange?: (value: number) => void;
+  onMinSamplesSplitChange?: (value: number) => void;
+  onMinSamplesLeafChange?: (value: number) => void;
 }
 
 interface TreeNode {
@@ -25,9 +29,40 @@ export function RandomForestVisualization({
   minSamplesSplit,
   minSamplesLeaf,
   modelState,
+  onTreesChange,
+  onMaxDepthChange,
+  onMinSamplesSplitChange,
+  onMinSamplesLeafChange,
 }: RandomForestVisualizationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { isTrained, isTraining } = modelState;
+
+  // Validation functions
+  const validateTrees = (value: number) => Math.max(10, Math.min(500, value));
+  const validateMaxDepth = (value: number) => Math.max(3, Math.min(30, value));
+  const validateMinSamplesSplit = (value: number) => Math.max(2, Math.min(20, value));
+  const validateMinSamplesLeaf = (value: number) => Math.max(1, Math.min(10, value));
+
+  // Input handlers with validation
+  const handleTreesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value) || 10;
+    if (onTreesChange) onTreesChange(validateTrees(value));
+  };
+
+  const handleMaxDepthChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value) || 3;
+    if (onMaxDepthChange) onMaxDepthChange(validateMaxDepth(value));
+  };
+
+  const handleMinSamplesSplitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value) || 2;
+    if (onMinSamplesSplitChange) onMinSamplesSplitChange(validateMinSamplesSplit(value));
+  };
+
+  const handleMinSamplesLeafChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value) || 1;
+    if (onMinSamplesLeafChange) onMinSamplesLeafChange(validateMinSamplesLeaf(value));
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -289,7 +324,7 @@ export function RandomForestVisualization({
   }, [trees, maxDepth, minSamplesSplit, minSamplesLeaf, isTraining, isTrained]);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full w-full flex flex-col">
       {/* Badge */}
       <div
         className={`mb-4 inline-flex items-center gap-2 px-4 py-2 rounded-full self-center ${
@@ -329,15 +364,54 @@ export function RandomForestVisualization({
       {/* Model Info Badge */}
       {isTrained && (
         <div className="mb-3 flex justify-center gap-3 text-xs">
-          <span className="px-2 py-1 rounded bg-white/5 text-gray-400">
-            {trees} Trees
-          </span>
-          <span className="px-2 py-1 rounded bg-white/5 text-gray-400">
-            Max Depth: {maxDepth}
-          </span>
-          <span className="px-2 py-1 rounded bg-white/5 text-gray-400">
-            Min Split: {minSamplesSplit}
-          </span>
+          <div className="flex items-center gap-2 px-2 py-1 rounded bg-white/5">
+            <input
+              type="number"
+              value={trees}
+              onChange={handleTreesChange}
+              disabled={isTraining}
+              min="10"
+              max="500"
+              className="w-12 bg-transparent text-gray-400 border-none outline-none focus:text-white focus:ring-1 focus:ring-[#39FF14]/50 rounded text-center"
+            />
+            <span className="text-gray-400">Trees</span>
+          </div>
+          <div className="flex items-center gap-2 px-2 py-1 rounded bg-white/5">
+            <input
+              type="number"
+              value={maxDepth}
+              onChange={handleMaxDepthChange}
+              disabled={isTraining}
+              min="3"
+              max="30"
+              className="w-8 bg-transparent text-gray-400 border-none outline-none focus:text-white focus:ring-1 focus:ring-[#39FF14]/50 rounded text-center"
+            />
+            <span className="text-gray-400">Max Depth</span>
+          </div>
+          <div className="flex items-center gap-2 px-2 py-1 rounded bg-white/5">
+            <input
+              type="number"
+              value={minSamplesSplit}
+              onChange={handleMinSamplesSplitChange}
+              disabled={isTraining}
+              min="2"
+              max="20"
+              className="w-8 bg-transparent text-gray-400 border-none outline-none focus:text-white focus:ring-1 focus:ring-[#39FF14]/50 rounded text-center"
+            />
+            <span className="text-gray-400">Min Split</span>
+          </div>
+          <div className="flex items-center gap-2 px-2 py-1 rounded bg-white/5">
+            <input
+              type="number"
+              value={minSamplesLeaf}
+              onChange={handleMinSamplesLeafChange}
+              disabled={isTraining}
+              min="1"
+              max="10"
+              className="w-8 bg-transparent text-gray-400 border-none outline-none focus:text-white focus:ring-1 focus:ring-[#39FF14]/50 rounded text-center"
+            />
+            <span className="text-gray-400">Min Leaf</span>
+          </div>
         </div>
       )}
 
