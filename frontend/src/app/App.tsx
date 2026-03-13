@@ -105,36 +105,6 @@ export default function App() {
     }
   }, []);
 
-  const togglePanel = (panelName: keyof typeof panels) => {
-    setPanels(prev => ({
-      ...prev,
-      [panelName]: {
-        ...prev[panelName],
-        collapsed: !prev[panelName].collapsed,
-        expanded: false
-      }
-    }));
-  };
-
-  const expandPanel = (panelName: keyof typeof panels) => {
-    setPanels(prev => {
-      const newPanels = { ...prev };
-      // Reset all panels
-      Object.keys(newPanels).forEach(key => {
-        newPanels[key as keyof typeof panels] = {
-          collapsed: false,
-          expanded: false
-        };
-      });
-      // Expand the selected panel
-      newPanels[panelName] = {
-        collapsed: false,
-        expanded: true
-      };
-      return newPanels;
-    });
-  };
-
   const resetPanels = () => {
     setPanelWidths({
       training: 30,
@@ -192,7 +162,7 @@ export default function App() {
         newWidths.controls = Math.max(15, remaining);
       }
 
-      return newWidths;
+      return newWidths as typeof prev;
     });
   }, []);
 
@@ -267,7 +237,7 @@ export default function App() {
 
         {/* Horizontal Resize Handle - Training/Visualization */}
         <div
-          ref={el => dragRefs.current.training = el}
+          ref={(el) => { if (el) dragRefs.current.training = el; }}
           className="w-2 bg-white/10 hover:bg-white/20 cursor-col-resize flex items-center justify-center group transition-colors"
           onMouseDown={(e) => handleMouseDown(e, 'training')}
         >
@@ -307,7 +277,7 @@ export default function App() {
 
         {/* Horizontal Resize Handle - Visualization/Controls */}
         <div
-          ref={el => dragRefs.current.visualization = el}
+          ref={(el) => { if (el) dragRefs.current.visualization = el; }}
           className="w-2 bg-white/10 hover:bg-white/20 cursor-col-resize flex items-center justify-center group transition-colors"
           onMouseDown={(e) => handleMouseDown(e, 'visualization')}
         >
